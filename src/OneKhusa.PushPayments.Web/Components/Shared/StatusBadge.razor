@@ -1,0 +1,26 @@
+<span class="status-badge @CssClass">@Label</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public PaymentStatus Status { get; set; }
+
+    private string Label => Status switch
+    {
+        PaymentStatus.Initiating => "Initiating",
+        PaymentStatus.AwaitingCustomer => "Awaiting customer PIN",
+        PaymentStatus.Paid => "Paid",
+        PaymentStatus.Failed => "Failed",
+        PaymentStatus.Reversed => "Reversed",
+        PaymentStatus.InitiationFailed => "Not initiated",
+        _ => Status.ToString(),
+    };
+
+    private string CssClass => Status switch
+    {
+        PaymentStatus.Paid => "success",
+        PaymentStatus.AwaitingCustomer => "pending",
+        PaymentStatus.Failed or PaymentStatus.InitiationFailed => "error",
+        PaymentStatus.Reversed => "reversed",
+        _ => "skipped",
+    };
+}

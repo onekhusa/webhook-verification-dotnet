@@ -1,0 +1,13 @@
+﻿@page "/"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<PageTitle>OneKhusa Push Payments</PageTitle>
+
+<div class="grid-2">
+    <PushPaymentCard />
+    <WebhookEventsCard />
+</div>
+
+<PaymentsCard />
+
+<ConfigurationCard />

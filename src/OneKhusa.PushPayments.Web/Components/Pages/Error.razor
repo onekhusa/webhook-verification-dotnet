@@ -1,0 +1,29 @@
+﻿@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>Error</PageTitle>
+
+<div class="card">
+    <h2><span class="dot orange"></span> An error occurred while processing your request.</h2>
+
+    @if (ShowRequestId)
+    {
+        <div class="result-box error">Request ID: @RequestId</div>
+    }
+
+    <p class="config" style="margin-top: 12px;">
+        Run the app in the Development environment (ASPNETCORE_ENVIRONMENT=Development) to see the details.
+        Never enable Development for deployed applications: it can expose sensitive information.
+    </p>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

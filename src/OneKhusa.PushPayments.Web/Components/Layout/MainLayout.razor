@@ -1,0 +1,27 @@
+﻿@inherits LayoutComponentBase
+@inject IOptions<OneKhusaOptions> OneKhusaOptions
+
+<div class="header">
+    <a class="brand" href="https://onekhusa.com" target="_blank" rel="noopener" title="OneKhusa">
+        <img src="@Assets["images/onekhusa-logo-on-dark.svg"]" alt="OneKhusa" />
+    </a>
+    <div>
+        <h1>Push Payments</h1>
+        <p>@Environment - Direct Push Payment with Webhook Verification</p>
+    </div>
+</div>
+
+<div class="container">
+    @Body
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private string Environment =>
+        OneKhusaOptions.Value.BaseUrl.Contains("sandbox", StringComparison.OrdinalIgnoreCase) ? "Sandbox" : "Production";
+}

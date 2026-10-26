@@ -1,0 +1,66 @@
+@implements IDisposable
+@inject IPaymentStore Store
+
+<div class="card">
+    <h2><span class="dot blue"></span> Payments</h2>
+
+    @if (_payments.Count == 0)
+    {
+        <div class="empty">No payments yet. Statuses update here as webhooks arrive.</div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Source Reference</th>
+                        <th>Payer</th>
+                        <th>Connector</th>
+                        <th style="text-align: right;">Amount</th>
+                        <th>Status</th>
+                        <th>Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var payment in _payments)
+                    {
+                        var latest = payment.History.LastOrDefault();
+                        <tr>
+                            <td><code>@payment.SourceReferenceNumber</code></td>
+                            <td>@payment.PayerAccountNumber</td>
+                            <td>@(payment.ConnectorName ?? payment.ConnectorId.ToString())</td>
+                            <td class="amount">@payment.Amount.ToString("N2")</td>
+                            <td>
+                                <StatusBadge Status="payment.Status" />
+                                @if (latest is not null)
+                                {
+                                    <div class="detail">@latest.Title@(latest.Detail is null ? "" : $": {latest.Detail}")</div>
+                                }
+                            </td>
+                            <td>@payment.UpdatedAt.ToLocalTime().ToString("HH:mm:ss")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<PaymentRecord> _payments = [];
+
+    protected override void OnInitialized()
+    {
+        _payments = Store.GetAll();
+        Store.Changed += OnStoreChanged;
+    }
+
+    private void OnStoreChanged() => InvokeAsync(() =>
+    {
+        _payments = Store.GetAll();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Store.Changed -= OnStoreChanged;
+}

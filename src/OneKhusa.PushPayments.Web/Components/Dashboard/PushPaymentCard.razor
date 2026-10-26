@@ -1,0 +1,173 @@
+@using System.Text.Json
+@inject IConnectorsClient ConnectorsClient
+@inject PaymentService PaymentService
+@inject IOptions<DemoOptions> DemoOptions
+
+<div class="card">
+    <h2><span class="dot green"></span> Push Payment</h2>
+
+    <EditForm Model="_form" OnValidSubmit="SubmitAsync" FormName="push-payment">
+        <DataAnnotationsValidator />
+
+        <div class="form-group">
+            <label for="push-connector">Connector</label>
+            @if (_connectors is { Count: > 0 })
+            {
+                <InputSelect id="push-connector" @bind-Value="_form.ConnectorId">
+                    <option value="0">Select a mobile money provider…</option>
+                    @foreach (var connector in _connectors)
+                    {
+                        <option value="@connector.ConnectorId" disabled="@(!connector.IsActive)">
+                            @connector.ConnectorName (@connector.ConnectorId)@(connector.IsActive ? "" : " - inactive")
+                        </option>
+                    }
+                </InputSelect>
+            }
+            else
+            {
+                <InputNumber id="push-connector" @bind-Value="_form.ConnectorId" placeholder="Connector ID" />
+                <div class="hint">
+                    @if (_connectorsError is not null)
+                    {
+                        <span>Could not load connectors: @_connectorsError</span>
+                        <button type="button" class="copy-btn" @onclick="LoadConnectorsAsync">Retry</button>
+                    }
+                    else
+                    {
+                        <span><span class="spinner"></span>Loading connectors…</span>
+                    }
+                </div>
+            }
+            <ValidationMessage For="() => _form.ConnectorId" />
+        </div>
+
+        <div class="form-group">
+            <label for="push-payer">Payer Account Number</label>
+            <InputText id="push-payer" @bind-Value="_form.PayerAccountNumber" placeholder="221100000101" />
+            <div class="hint">
+                Sandbox <a href="https://docs.onekhusa.com/api-reference/collections/test-accounts" target="_blank" rel="noopener">test wallets</a>:
+                Airtel Money <code>221100000101</code>, TNM Mpamba <code>231100000101</code> (PIN <code>1234</code>).
+            </div>
+            <ValidationMessage For="() => _form.PayerAccountNumber" />
+        </div>
+
+        <div class="form-group">
+            <label for="push-amount">Transaction Amount</label>
+            <InputNumber id="push-amount" @bind-Value="_form.Amount" step="0.01" />
+            <ValidationMessage For="() => _form.Amount" />
+        </div>
+
+        <div class="form-group">
+            <label for="push-description">Description</label>
+            <InputText id="push-description" @bind-Value="_form.Description" />
+            <ValidationMessage For="() => _form.Description" />
+        </div>
+
+        <div class="form-group">
+            <label for="push-captured-by">Captured By</label>
+            <InputText id="push-captured-by" @bind-Value="_form.CapturedBy" />
+            <ValidationMessage For="() => _form.CapturedBy" />
+        </div>
+
+        <div class="form-group">
+            <label for="push-source-reference">Source Reference (auto-generated if empty)</label>
+            <InputText id="push-source-reference" @bind-Value="_form.SourceReferenceNumber" placeholder="Leave empty to auto-generate" />
+            <ValidationMessage For="() => _form.SourceReferenceNumber" />
+        </div>
+
+        <button type="submit" class="btn-primary" disabled="@_submitting">
+            @if (_submitting)
+            {
+                <span class="spinner"></span><span>Initiating…</span>
+            }
+            else
+            {
+                <span>Initiate Push Payment</span>
+            }
+        </button>
+    </EditForm>
+
+    @if (_result is not null)
+    {
+        <div class="result-box @(_resultIsError ? "error" : "success")">@_result</div>
+    }
+</div>
+
+@code {
+    private static readonly JsonSerializerOptions PrettyJson = new()
+    {
+        WriteIndented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping, // display only, rendered as text
+    };
+
+    private readonly PushPaymentForm _form = new();
+    private List<Connector>? _connectors;
+    private string? _connectorsError;
+    private bool _submitting;
+    private string? _result;
+    private bool _resultIsError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _form.CapturedBy = DemoOptions.Value.CapturedBy;
+        await LoadConnectorsAsync();
+    }
+
+    private async Task LoadConnectorsAsync()
+    {
+        _connectors = null;
+        _connectorsError = null;
+        var result = await ConnectorsClient.GetAllAsync();
+        if (result.IsSuccess)
+        {
+            // Only mobile money operators can receive a push prompt.
+            _connectors = result.Value
+                .Where(c => c.IsMobileMoney)
+                .OrderByDescending(c => c.IsActive)
+                .ThenBy(c => c.ConnectorName)
+                .ToList();
+        }
+        else
+        {
+            _connectors = [];
+            _connectorsError = result.Error.Message;
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        _submitting = true;
+        _result = null;
+        try
+        {
+            var connectorName = _connectors?.FirstOrDefault(c => c.ConnectorId == _form.ConnectorId)?.ConnectorName;
+            var payment = await PaymentService.StartAsync(_form, connectorName);
+
+            _resultIsError = payment.Status == PaymentStatus.InitiationFailed;
+            _result = _resultIsError
+                ? payment.StatusDetail
+                : JsonSerializer.Serialize(new
+                {
+                    payment.SourceReferenceNumber,
+                    Status = payment.Status.ToString(),
+                    payment.Amount,
+                    payment.TotalCharges,
+                    payment.AmountToPay,
+                    payment.FeeRuleCode,
+                    Next = "Approve it under Test Your Integration → Simulate Push Payment, then watch Webhook Events.",
+                }, PrettyJson);
+
+            // A fresh reference for the next payment.
+            _form.SourceReferenceNumber = null;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _resultIsError = true;
+            _result = ex.Message;
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}

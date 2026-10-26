@@ -1,0 +1,99 @@
+@inject IOptions<OneKhusaOptions> OneKhusaOptions
+@inject IWebhookSecretProvider SecretProvider
+@inject IAccessTokenProvider TokenProvider
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<div class="card">
+    <h2><span class="dot purple"></span> Configuration</h2>
+
+    <div class="config">
+        <div><strong>API Base:</strong> <span class="mono">@OneKhusaOptions.Value.BaseUrl</span></div>
+        <div><strong>Merchant Account:</strong> @(OneKhusaOptions.Value.MerchantAccountNumber == 0 ? "not set" : OneKhusaOptions.Value.MerchantAccountNumber.ToString())</div>
+
+        <div class="row" style="flex-wrap: wrap;">
+            <strong>Credentials:</strong>
+            @if (_configurationErrors.Count == 0)
+            {
+                <span class="status-badge success">Configured</span>
+            }
+            else
+            {
+                <span class="status-badge error">Incomplete</span>
+                <span>@string.Join(" ", _configurationErrors)</span>
+            }
+            <button class="copy-btn" @onclick="TestCredentialsAsync" disabled="@_testingCredentials">
+                @(_testingCredentials ? "Requesting token…" : "Test credentials")
+            </button>
+            @if (_tokenMessage is not null)
+            {
+                <span style="color: @(_tokenOk ? "#3fb950" : "#f85149")">@_tokenMessage</span>
+            }
+        </div>
+
+        <div class="row" style="flex-wrap: wrap;">
+            <strong>Webhook Secrets:</strong>
+            @foreach (var eventName in PushPaymentEvents.All)
+            {
+                var configured = SecretProvider.GetSecret(eventName) is not null;
+                <span class="status-badge @(configured ? "success" : "error")" title="@(configured ? "Configured" : "Missing: deliveries for this event are rejected")">@eventName</span>
+            }
+        </div>
+
+        <div>
+            <strong>Webhook Callback URL:</strong>
+            <span class="mono">@WebhookUrl</span>
+            <button class="copy-btn" @onclick="CopyWebhookUrlAsync">@_copyText</button>
+        </div>
+
+        <div><strong>Note:</strong> Register the callback URL in the OneKhusa portal (Developers → Webhooks) for all three <code>pushpayment.*</code> events, using your devtunnel or ngrok URL. Each event has its own webhook secret.</div>
+    </div>
+</div>
+
+@code {
+    private IReadOnlyList<string> _configurationErrors = [];
+    private bool _testingCredentials;
+    private bool _tokenOk;
+    private string? _tokenMessage;
+    private string _copyText = "Copy";
+
+    private string WebhookUrl => Navigation.BaseUri.TrimEnd('/') + WebhookEndpointExtensions.DefaultPushPaymentPattern;
+
+    protected override void OnInitialized() =>
+        _configurationErrors = OneKhusaOptions.Value.GetValidationErrors();
+
+    private async Task TestCredentialsAsync()
+    {
+        _testingCredentials = true;
+        _tokenMessage = null;
+        try
+        {
+            var result = await TokenProvider.GetAccessTokenAsync();
+            _tokenOk = result.IsSuccess;
+            _tokenMessage = result.IsSuccess
+                ? $"✓ Access token obtained, expires {result.Value.ExpiresOn.ToLocalTime():HH:mm:ss}"
+                : $"✗ {result.Error.Message}";
+        }
+        finally
+        {
+            _testingCredentials = false;
+        }
+    }
+
+    private async Task CopyWebhookUrlAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", WebhookUrl);
+            _copyText = "Copied!";
+        }
+        catch (JSException)
+        {
+            _copyText = "Copy failed";
+        }
+
+        StateHasChanged();
+        await Task.Delay(2000);
+        _copyText = "Copy";
+    }
+}

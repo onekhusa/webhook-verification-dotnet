@@ -1,0 +1,100 @@
+@using System.Text.Json
+@using OneKhusa.Webhooks.Diagnostics
+
+<div class="webhook-item">
+    @if (Delivery.Verification.IsValid)
+    {
+        <div class="verify-banner verified">
+            <span class="verify-icon">✓</span><span class="verify-title">Webhook Verified</span><span class="verify-detail">— @Delivery.Verification.Description</span>
+        </div>
+    }
+    else
+    {
+        <div class="verify-banner rejected">
+            <span class="verify-icon">✗</span><span class="verify-title">Verification Failed</span><span class="verify-detail">— @Delivery.Verification.Description</span>
+        </div>
+    }
+
+    <div class="meta">
+        <span class="status-badge @EventBadgeClass">@(Delivery.EventName ?? "no event header")</span>
+        <span>@Delivery.ReceivedAt.ToLocalTime().ToString("g")</span>
+        <span>Ref: @(_reference ?? "N/A")</span>
+        <span>Amount: @(_amount ?? "N/A")</span>
+        <span>HTTP @Delivery.StatusCode · @Delivery.Outcome</span>
+    </div>
+
+    <pre>@_displayBody</pre>
+
+    @if (Delivery.Headers.Count > 0)
+    {
+        <div class="section">
+            <div class="section-title">HEADERS:</div>
+            @foreach (var (name, value) in Delivery.Headers)
+            {
+                <div class="sig-row"><span class="sig-label">@name:</span><span class="sig-value">@value</span></div>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Delivery.Signature))
+    {
+        <div class="section">
+            <div class="sig-row"><span class="sig-label">Received:</span><span class="sig-value">@Delivery.Signature</span></div>
+            <div class="sig-row">
+                <span class="sig-label">Match:</span>
+                <span class="sig-value" style="color: @(Delivery.Verification.IsValid ? "#3fb950" : "#f85149")">@(Delivery.Verification.IsValid ? "YES" : "NO")</span>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly JsonSerializerOptions PrettyJson = new()
+    {
+        WriteIndented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping, // display only, rendered as text
+    };
+
+    private string _displayBody = string.Empty;
+    private string? _reference;
+    private string? _amount;
+
+    [Parameter, EditorRequired]
+    public WebhookDelivery Delivery { get; set; } = default!;
+
+    private string EventBadgeClass => Delivery.EventName switch
+    {
+        PushPaymentEvents.Success => "success",
+        PushPaymentEvents.Failed => "error",
+        PushPaymentEvents.Reversed => "reversed",
+        _ => "pending",
+    };
+
+    protected override void OnParametersSet()
+    {
+        _displayBody = Delivery.Body;
+        _reference = null;
+        _amount = null;
+
+        // Display only. Unverified bodies are never used for anything else.
+        try
+        {
+            using var document = JsonDocument.Parse(Delivery.Body);
+            var root = document.RootElement;
+            _displayBody = JsonSerializer.Serialize(root, PrettyJson);
+
+            if (root.ValueKind == JsonValueKind.Object)
+            {
+                _reference = ReadString(root, "merchantReferenceNumber") ?? ReadString(root, "sourceReferenceNumber");
+                if (root.TryGetProperty("transactionAmount", out var amount) && amount.ValueKind == JsonValueKind.Number)
+                    _amount = amount.GetDecimal().ToString("N2");
+            }
+        }
+        catch (JsonException)
+        {
+        }
+    }
+
+    private static string? ReadString(JsonElement element, string name) =>
+        element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+}
