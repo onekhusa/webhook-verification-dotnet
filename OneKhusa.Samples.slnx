@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OneKhusa.Client/OneKhusa.Client.csproj" />
+    <Project Path="src/OneKhusa.PushPayments.Web/OneKhusa.PushPayments.Web.csproj" />
+    <Project Path="src/OneKhusa.Webhooks/OneKhusa.Webhooks.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OneKhusa.Client.Tests/OneKhusa.Client.Tests.csproj" />
+    <Project Path="tests/OneKhusa.PushPayments.Web.Tests/OneKhusa.PushPayments.Web.Tests.csproj" />
+    <Project Path="tests/OneKhusa.Webhooks.Tests/OneKhusa.Webhooks.Tests.csproj" />
+  </Folder>
+</Solution>

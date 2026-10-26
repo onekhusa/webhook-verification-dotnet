@@ -1,0 +1,58 @@
+# OneKhusa push payment API: raw requests for the VS Code REST Client or Visual Studio .http editor.
+# Fill in the variables below. Never commit real credentials.
+
+@baseUrl = https://api.onekhusa.com/sandbox/v1
+@apiKey = your-api-key
+@apiSecret = your-api-secret
+@organisationId = your-organisation-id
+@merchantAccountNumber = 12345678
+
+### 1. Get an access token (valid for 5 minutes)
+# @name token
+POST {{baseUrl}}/account/getAccessToken
+Content-Type: application/json
+Accept-Language: en
+
+{
+  "apiKey": "{{apiKey}}",
+  "apiSecret": "{{apiSecret}}",
+  "organisationId": "{{organisationId}}",
+  "merchantAccountNumber": {{merchantAccountNumber}}
+}
+
+### 2. List connectors; use a mobile money (channelCode "M") connectorId below
+GET {{baseUrl}}/core/connectors/GetAll
+Authorization: Bearer {{token.response.body.accessToken}}
+Accept: application/json
+
+### 3. Initiate a direct push payment (sends a PIN prompt to the customer's phone)
+# Sandbox test wallets: Airtel Money 221100000101, TNM Mpamba 231100000101 (PIN 1234).
+# Use the connectorId of the matching provider.
+# A 200 with responseCode "I100" only means the prompt was sent. Wait for the webhook.
+POST {{baseUrl}}/collections/push/direct/initiate
+Authorization: Bearer {{token.response.body.accessToken}}
+Content-Type: application/json
+Accept-Language: en
+X-Idempotency-Key: {{$guid}}
+
+{
+  "merchantAccountNumber": {{merchantAccountNumber}},
+  "connectorId": 550044,
+  "payerAccountNumber": "221100000101",
+  "sourceReferenceNumber": "PPHTTP{{$timestamp}}",
+  "transactionDescription": "Sample order payment",
+  "transactionAmount": 100,
+  "capturedBy": "you@example.com"
+}
+
+### 4. Deliver a webhook to the local sample app
+# The signature must be the lowercase hex HMAC-SHA512 of the exact body below, keyed with the
+# pushpayment.success secret. Compute it with:
+#   printf '%s' '<body on one line>' | openssl dgst -sha512 -hmac '<secret>'
+# The app's Webhook simulator page does this for you.
+POST http://localhost:5085/webhooks/onekhusa/pushpayment
+Content-Type: application/json
+X-OneKhusa-Webhook-Event: pushpayment.success
+X-OneKhusa-Webhook-Signature: paste-computed-signature-here
+
+{"connectorId":550044,"merchantReferenceNumber":"PPHTTP123","transactionStatusCode":"S","transactionAmount":100}

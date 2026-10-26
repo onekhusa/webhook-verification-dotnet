@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <UserSecretsId>onekhusa-pushpayments-web-sample</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OneKhusa.Client\OneKhusa.Client.csproj" />
+    <ProjectReference Include="..\OneKhusa.Webhooks\OneKhusa.Webhooks.csproj" />
+  </ItemGroup>
+
+</Project>
