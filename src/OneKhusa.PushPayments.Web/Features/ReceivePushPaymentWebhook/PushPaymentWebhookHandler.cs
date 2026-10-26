@@ -1,14 +1,15 @@
+using OneKhusa.PushPayments.Web.Shared.Payments;
 using OneKhusa.Webhooks;
 using OneKhusa.Webhooks.Handling;
 using OneKhusa.Webhooks.Models;
 
-namespace OneKhusa.PushPayments.Web.Payments;
+namespace OneKhusa.PushPayments.Web.Features.ReceivePushPaymentWebhook;
 
 /// <summary>
 /// The sample's business logic for verified push payment webhooks. This is the class you would
 /// replace with your own: look up the order, then mark it paid, failed or reversed.
 /// </summary>
-public sealed class PaymentWebhookHandler(IPaymentStore store, ILogger<PaymentWebhookHandler> logger) : IPushPaymentWebhookHandler
+public sealed class PushPaymentWebhookHandler(IPaymentStore store, ILogger<PushPaymentWebhookHandler> logger) : IPushPaymentWebhookHandler
 {
     public Task HandleAsync(PushPaymentWebhook webhook, CancellationToken cancellationToken)
     {

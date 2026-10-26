@@ -1,4 +1,4 @@
-namespace OneKhusa.PushPayments.Web.Payments;
+namespace OneKhusa.PushPayments.Web.Shared.Payments;
 
 /// <summary>
 /// Where the sample keeps payments. In your application this is your orders or payments table.

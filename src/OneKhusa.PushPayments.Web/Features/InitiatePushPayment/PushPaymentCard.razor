@@ -1,6 +1,6 @@
 @using System.Text.Json
 @inject IConnectorsClient ConnectorsClient
-@inject PaymentService PaymentService
+@inject InitiatePushPaymentHandler Handler
 @inject IOptions<DemoOptions> DemoOptions
 
 <div class="card">
@@ -141,7 +141,7 @@
         try
         {
             var connectorName = _connectors?.FirstOrDefault(c => c.ConnectorId == _form.ConnectorId)?.ConnectorName;
-            var payment = await PaymentService.StartAsync(_form, connectorName);
+            var payment = await Handler.HandleAsync(new InitiatePushPaymentCommand(_form, connectorName));
 
             _resultIsError = payment.Status == PaymentStatus.InitiationFailed;
             _result = _resultIsError

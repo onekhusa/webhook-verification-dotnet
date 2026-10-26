@@ -2,11 +2,11 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using OneKhusa.Client.Configuration;
-using OneKhusa.PushPayments.Web.Payments;
+using OneKhusa.PushPayments.Web.Shared.Payments;
 using OneKhusa.Webhooks;
 using OneKhusa.Webhooks.Verification;
 
-namespace OneKhusa.PushPayments.Web.Diagnostics;
+namespace OneKhusa.PushPayments.Web.Features.WebhookEvents;
 
 /// <summary>
 /// Development helper: signs a sample payload the way OneKhusa does and POSTs it to this app's own
@@ -31,7 +31,7 @@ public sealed class WebhookSimulator(
     {
         var now = timeProvider.GetUtcNow();
         var reference = payment?.SourceReferenceNumber ?? "PP-UNKNOWN-REF";
-        var amount = payment?.Amount ?? 100m;
+        var amount = payment?.Amount ?? 500m;
         var common = new Dictionary<string, object?>
         {
             ["connectorId"] = payment?.ConnectorId ?? 550044,

@@ -4,11 +4,11 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using OneKhusa.PushPayments.Web.Payments;
+using OneKhusa.PushPayments.Web.Shared.Payments;
 using OneKhusa.Webhooks;
 using OneKhusa.Webhooks.Verification;
 
-namespace OneKhusa.PushPayments.Web.Tests;
+namespace OneKhusa.PushPayments.Web.Tests.Features.ReceivePushPaymentWebhook;
 
 public class PushPaymentWebhookEndpointTests : IDisposable
 {

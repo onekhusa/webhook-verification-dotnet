@@ -1,4 +1,4 @@
-namespace OneKhusa.PushPayments.Web.Payments;
+namespace OneKhusa.PushPayments.Web.Shared.Payments;
 
 /// <summary>Demo storage: lost on restart. Replace with a database in a real integration.</summary>
 public sealed class InMemoryPaymentStore : IPaymentStore

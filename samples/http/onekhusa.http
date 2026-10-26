@@ -41,8 +41,8 @@ X-Idempotency-Key: {{$guid}}
   "payerAccountNumber": "221100000101",
   "sourceReferenceNumber": "PPHTTP{{$timestamp}}",
   "transactionDescription": "Sample order payment",
-  "transactionAmount": 100,
-  "capturedBy": "you@example.com"
+  "transactionAmount": 500,
+  "capturedBy": "your-email@email.com"
 }
 
 ### 4. Deliver a webhook to the local sample app

@@ -72,7 +72,7 @@ dotnet user-secrets set "OneKhusa:MerchantAccountNumber" "<8-digit number>"
 dotnet user-secrets set "OneKhusa:Webhooks:Secrets:pushpayment.success" "<secret>"
 dotnet user-secrets set "OneKhusa:Webhooks:Secrets:pushpayment.failed" "<secret>"
 dotnet user-secrets set "OneKhusa:Webhooks:Secrets:pushpayment.reversed" "<secret>"
-dotnet user-secrets set "Demo:CapturedBy" "you@example.com"
+dotnet user-secrets set "Demo:CapturedBy" "your-email@email.com"   # optional: pre-fills "Captured By"
 cd ../..
 
 # 2. Run the app
@@ -161,7 +161,9 @@ OneKhusa__ApiSecret=<api secret>
 OneKhusa__Webhooks__Secrets__pushpayment.success=<secret>
 ```
 
-Register the services in `Program.cs` ([full file](src/OneKhusa.PushPayments.Web/Program.cs)):
+Register the services in your app's `Program.cs`. The sample does the same through its feature
+slices; see [Program.cs](src/OneKhusa.PushPayments.Web/Program.cs) and
+[ReceivePushPaymentWebhookFeature.cs](src/OneKhusa.PushPayments.Web/Features/ReceivePushPaymentWebhook/ReceivePushPaymentWebhookFeature.cs).
 
 ```csharp
 using OneKhusa.Client.DependencyInjection;
@@ -325,7 +327,7 @@ X-Idempotency-Key: 3f1c9a7e0b8d4e6f9a2b5c7d8e9f0a1b
 | `responseCode` | `I100` means the prompt was sent. It does **not** mean the customer paid. |
 | `feeRuleCode` | `CC`: fees are added to what the customer pays. `CM`: fees are deducted from what the merchant receives. |
 
-**C#**. This is the pattern [PaymentService.cs](src/OneKhusa.PushPayments.Web/Payments/PaymentService.cs)
+**C#**. This is the pattern [InitiatePushPaymentHandler.cs](src/OneKhusa.PushPayments.Web/Features/InitiatePushPayment/InitiatePushPaymentHandler.cs)
 follows; `orders.*` stands for your own persistence. Save the payment *before* calling OneKhusa, so
 a fast webhook can never arrive for a payment you don't know about:
 
@@ -565,7 +567,7 @@ Guidelines:
   redeliveries without calling your handler again, but your state changes should still be safe to
   repeat.
 - **Expect events out of order.** For example, don't let a late `failed` undo a `success`. See
-  [PaymentWebhookHandler.cs](src/OneKhusa.PushPayments.Web/Payments/PaymentWebhookHandler.cs) for
+  [PushPaymentWebhookHandler.cs](src/OneKhusa.PushPayments.Web/Features/ReceivePushPaymentWebhook/PushPaymentWebhookHandler.cs) for
   one way to guard against this.
 - **Stay fast.** Do slow work, such as emails or ERP calls, in the background after recording the
   status.
@@ -653,9 +655,46 @@ from the UI (Development only).
 |---|---|---|
 | [src/OneKhusa.Client](src/OneKhusa.Client) | API client: token caching, connectors, push initiation. No ASP.NET dependency. | Yes |
 | [src/OneKhusa.Webhooks](src/OneKhusa.Webhooks) | Webhook receiver: HMAC-SHA512 verification, per-event secrets, deduplication, minimal API endpoint. | Yes |
-| [src/OneKhusa.PushPayments.Web](src/OneKhusa.PushPayments.Web) | Blazor demo (Interactive Server): one dashboard with Push Payment, Webhook Events, Payments and Configuration cards, one component each in `Components/Dashboard`. | Use as a reference |
-| [tests/](tests) | xUnit tests for the libraries and end-to-end tests of the webhook endpoint. | |
+| [src/OneKhusa.PushPayments.Web](src/OneKhusa.PushPayments.Web) | Blazor demo (Interactive Server), organised as vertical slices (see below). | Use as a reference |
+| [tests/](tests) | xUnit tests for the libraries, the slices, and end-to-end tests of the webhook endpoint. | |
 | [samples/http/onekhusa.http](samples/http/onekhusa.http) | Raw requests for the VS Code REST Client or the Visual Studio `.http` editor. | |
+
+### The web app: vertical slices
+
+The Blazor app is organised **by feature, not by layer**. Each folder under `Features/` holds
+everything for one user-facing action: its command and handler, its UI card, and its DI
+registration. To see how a step works, open one folder.
+
+```
+src/OneKhusa.PushPayments.Web/
+├─ Features/
+│  ├─ InitiatePushPayment/          Step 5: send the payment prompt
+│  │  ├─ InitiatePushPaymentHandler.cs   command + handler: save first, call OneKhusa, record outcome
+│  │  ├─ PushPaymentForm.cs              input + validation rules
+│  │  ├─ SourceReference.cs              unique 5-25 character reference
+│  │  ├─ PushPaymentCard.razor           UI
+│  │  └─ InitiatePushPaymentFeature.cs   services.AddInitiatePushPayment()
+│  ├─ ReceivePushPaymentWebhook/    Steps 6-9: verify and apply webhooks
+│  │  ├─ PushPaymentWebhookHandler.cs    what success / failed / reversed mean for a payment
+│  │  └─ ReceivePushPaymentWebhookFeature.cs   AddReceivePushPaymentWebhook() + MapReceivePushPaymentWebhook()
+│  ├─ WebhookEvents/                Step 10: inspect deliveries and send signed test webhooks
+│  ├─ Payments/                     live payments list
+│  └─ Configuration/                credentials / secrets status, token test, callback URL
+├─ Shared/Payments/                 payment record + store, used by several slices
+├─ Components/                      app shell only: layout and the page that arranges the cards
+└─ Program.cs                       registers the shared client and store, then each slice
+```
+
+| README step | Where it lives |
+|---|---|
+| 3. Access token, 4. Connectors | `OneKhusa.Client` library |
+| 5. Initiate | `Features/InitiatePushPayment/` |
+| 6–7. Endpoint and signature verification | `OneKhusa.Webhooks` library, wired up in `Features/ReceivePushPaymentWebhook/` |
+| 8. Handle the event | `Features/ReceivePushPaymentWebhook/PushPaymentWebhookHandler.cs` |
+| 10. Test | `Features/WebhookEvents/` |
+
+The OneKhusa-specific code that doesn't depend on this app stays in the two libraries. The slices
+show how an application uses them.
 
 ## Tests
 
@@ -671,6 +710,9 @@ dotnet test
   checked to show `detail` and `errorCode`.
 - End-to-end webhook tests run through the real ASP.NET pipeline: signed, unsigned, wrong-secret,
   duplicate, malformed and oversized deliveries.
+- The initiate slice is tested for saving the payment before calling OneKhusa, not overwriting a
+  status a webhook has already set, API errors, and duplicate source references. The test folders
+  mirror the `Features/` slices.
 
 ## Notes and limitations
 

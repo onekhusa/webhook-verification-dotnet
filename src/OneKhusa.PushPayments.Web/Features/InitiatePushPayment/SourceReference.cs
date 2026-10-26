@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 
-namespace OneKhusa.PushPayments.Web.Payments;
+namespace OneKhusa.PushPayments.Web.Features.InitiatePushPayment;
 
 /// <summary>Generates the <c>sourceReferenceNumber</c> sent with each push request (OneKhusa allows 5–25 characters).</summary>
 public static class SourceReference

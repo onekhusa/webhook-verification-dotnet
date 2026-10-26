@@ -1,34 +1,24 @@
 using OneKhusa.Client.DependencyInjection;
 using OneKhusa.PushPayments.Web.Components;
-using OneKhusa.PushPayments.Web.Configuration;
-using OneKhusa.PushPayments.Web.Diagnostics;
-using OneKhusa.PushPayments.Web.Payments;
-using OneKhusa.Webhooks.DependencyInjection;
-using OneKhusa.Webhooks.Diagnostics;
-using OneKhusa.Webhooks.Endpoints;
-using OneKhusa.Webhooks.Handling;
+using OneKhusa.PushPayments.Web.Features.InitiatePushPayment;
+using OneKhusa.PushPayments.Web.Features.ReceivePushPaymentWebhook;
+using OneKhusa.PushPayments.Web.Features.WebhookEvents;
+using OneKhusa.PushPayments.Web.Shared.Payments;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// 1. OneKhusa API client: access tokens, connectors, push payment initiation.
+// Shared: the OneKhusa API client (tokens, connectors, push initiation) and the payment store.
 builder.Services.AddOneKhusaClient(builder.Configuration);
+builder.Services.AddPaymentStore();
 
-// 2. OneKhusa webhook receiver: signature verification and deduplication,
-//    plus the application's handler that decides what each event means for a payment.
-builder.Services.AddOneKhusaWebhooks(builder.Configuration);
-builder.Services.AddScoped<IPushPaymentWebhookHandler, PaymentWebhookHandler>();
-
-// 3. Demo application: in-memory payments, webhook inspector and simulator.
-builder.Services.Configure<DemoOptions>(builder.Configuration.GetSection(DemoOptions.SectionName));
-builder.Services.AddSingleton<IPaymentStore, InMemoryPaymentStore>();
-builder.Services.AddScoped<PaymentService>();
-builder.Services.AddSingleton<WebhookLog>();
-builder.Services.AddSingleton<IWebhookDeliveryObserver>(services => services.GetRequiredService<WebhookLog>());
-builder.Services.AddHttpClient(WebhookSimulator.HttpClientName);
-builder.Services.AddScoped<WebhookSimulator>();
+// Feature slices. Each one lives in its own folder under Features/.
+builder.Services
+    .AddInitiatePushPayment(builder.Configuration)          // Step 5: send the payment prompt
+    .AddReceivePushPaymentWebhook(builder.Configuration)    // Steps 6-9: verify and apply webhooks
+    .AddWebhookEvents();                                    // Step 10: inspect and simulate deliveries
 
 var app = builder.Build();
 
@@ -42,8 +32,8 @@ app.UseHttpsRedirection();
 
 app.UseAntiforgery();
 
-// Register this URL in the OneKhusa portal for the pushpayment.* events.
-app.MapOneKhusaPushPaymentWebhook();
+// POST /webhooks/onekhusa/pushpayment. Register this URL in the OneKhusa portal.
+app.MapReceivePushPaymentWebhook();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

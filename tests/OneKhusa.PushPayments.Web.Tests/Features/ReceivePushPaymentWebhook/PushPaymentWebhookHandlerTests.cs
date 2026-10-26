@@ -1,11 +1,12 @@
-using OneKhusa.PushPayments.Web.Payments;
+using OneKhusa.PushPayments.Web.Features.ReceivePushPaymentWebhook;
+using OneKhusa.PushPayments.Web.Shared.Payments;
 using OneKhusa.Webhooks;
 using OneKhusa.Webhooks.Handling;
 using OneKhusa.Webhooks.Models;
 
-namespace OneKhusa.PushPayments.Web.Tests;
+namespace OneKhusa.PushPayments.Web.Tests.Features.ReceivePushPaymentWebhook;
 
-public class PaymentWebhookHandlerTests
+public class PushPaymentWebhookHandlerTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 26, 8, 0, 0, TimeSpan.Zero);
 
@@ -30,7 +31,7 @@ public class PaymentWebhookHandlerTests
     [InlineData(PaymentStatus.Initiating, PushPaymentEvents.Success, PaymentStatus.Paid)]
     public void Applies_the_event(PaymentStatus current, string eventName, PaymentStatus expected)
     {
-        var updated = PaymentWebhookHandler.Apply(Payment(current), Webhook(eventName));
+        var updated = PushPaymentWebhookHandler.Apply(Payment(current), Webhook(eventName));
 
         Assert.Equal(expected, updated.Status);
         Assert.Single(updated.History);
@@ -42,7 +43,7 @@ public class PaymentWebhookHandlerTests
     [InlineData(PaymentStatus.Reversed, PushPaymentEvents.Success)]
     public void Out_of_order_events_do_not_undo_a_completed_payment(PaymentStatus current, string eventName)
     {
-        var updated = PaymentWebhookHandler.Apply(Payment(current), Webhook(eventName));
+        var updated = PushPaymentWebhookHandler.Apply(Payment(current), Webhook(eventName));
 
         Assert.Equal(current, updated.Status);
         Assert.StartsWith("Ignored", updated.History.Single().Title);
@@ -51,7 +52,7 @@ public class PaymentWebhookHandlerTests
     [Fact]
     public void Failure_reason_comes_from_error_messages()
     {
-        var updated = PaymentWebhookHandler.Apply(Payment(PaymentStatus.AwaitingCustomer), Webhook(PushPaymentEvents.Failed));
+        var updated = PushPaymentWebhookHandler.Apply(Payment(PaymentStatus.AwaitingCustomer), Webhook(PushPaymentEvents.Failed));
 
         Assert.Equal("Insufficient funds", updated.StatusDetail);
     }

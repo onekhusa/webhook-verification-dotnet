@@ -1,18 +1,27 @@
 using Microsoft.Extensions.Options;
 using OneKhusa.Client.Configuration;
 using OneKhusa.Client.PushPayments;
+using OneKhusa.PushPayments.Web.Shared.Payments;
 
-namespace OneKhusa.PushPayments.Web.Payments;
+namespace OneKhusa.PushPayments.Web.Features.InitiatePushPayment;
 
-/// <summary>Starts a push payment: records it locally, then asks OneKhusa to prompt the customer.</summary>
-public sealed class PaymentService(
+/// <param name="ConnectorName">Display name of the selected connector, kept for the payments list.</param>
+public sealed record InitiatePushPaymentCommand(PushPaymentForm Form, string? ConnectorName);
+
+/// <summary>
+/// README Step 5. Records the payment locally, then asks OneKhusa to send the prompt to the
+/// customer's phone. The outcome arrives later as a webhook (see the ReceivePushPaymentWebhook slice).
+/// </summary>
+public sealed class InitiatePushPaymentHandler(
     IPushPaymentClient pushPaymentClient,
     IPaymentStore store,
     IOptions<OneKhusaOptions> oneKhusaOptions,
     TimeProvider timeProvider)
 {
-    public async Task<PaymentRecord> StartAsync(PushPaymentForm form, string? connectorName, CancellationToken cancellationToken = default)
+    /// <exception cref="InvalidOperationException">The given source reference has already been used.</exception>
+    public async Task<PaymentRecord> HandleAsync(InitiatePushPaymentCommand command, CancellationToken cancellationToken = default)
     {
+        var (form, connectorName) = command;
         var reference = string.IsNullOrWhiteSpace(form.SourceReferenceNumber)
             ? SourceReference.New(timeProvider)
             : form.SourceReferenceNumber.Trim();

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace OneKhusa.PushPayments.Web.Payments;
+namespace OneKhusa.PushPayments.Web.Features.InitiatePushPayment;
 
 /// <summary>What the operator fills in on the push payment page.</summary>
 public sealed class PushPaymentForm
@@ -18,7 +18,7 @@ public sealed class PushPaymentForm
 
     [Range(typeof(decimal), "1", "10000000", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true,
         ErrorMessage = "Enter an amount between 1 and 10,000,000.")]
-    public decimal Amount { get; set; } = 100m;
+    public decimal Amount { get; set; } = 500m;
 
     [Required(ErrorMessage = "Enter a description; the customer sees it on the prompt.")]
     [StringLength(100)]

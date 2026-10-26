@@ -1,4 +1,4 @@
-namespace OneKhusa.PushPayments.Web.Payments;
+namespace OneKhusa.PushPayments.Web.Shared.Payments;
 
 public enum PaymentStatus
 {

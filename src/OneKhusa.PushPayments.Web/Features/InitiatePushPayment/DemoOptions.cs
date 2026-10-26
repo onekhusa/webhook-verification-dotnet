@@ -1,4 +1,4 @@
-namespace OneKhusa.PushPayments.Web.Configuration;
+namespace OneKhusa.PushPayments.Web.Features.InitiatePushPayment;
 
 /// <summary>Defaults for the demo UI. Not part of the OneKhusa integration itself.</summary>
 public sealed class DemoOptions

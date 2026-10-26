@@ -1,6 +1,6 @@
 using OneKhusa.Webhooks.Diagnostics;
 
-namespace OneKhusa.PushPayments.Web.Diagnostics;
+namespace OneKhusa.PushPayments.Web.Features.WebhookEvents;
 
 /// <summary>Keeps the most recent webhook deliveries in memory for the Webhook Inspector page.</summary>
 public sealed class WebhookLog : IWebhookDeliveryObserver
